@@ -1,14 +1,15 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/hooks/use-auth";
-import { createGuestIdentity, type PlayerIdentity } from "@/lib/player-identity";
+import type { PlayerIdentity } from "@/lib/player-identity";
 
 const STORAGE_KEY = "contact-games-guest";
 
 export function usePlayerIdentity() {
   const { user, loading } = useAuth();
   const [guest, setGuest] = useState<PlayerIdentity | null>(null);
+  const [needsName, setNeedsName] = useState(false);
 
   useEffect(() => {
     if (loading || user) return;
@@ -26,16 +27,31 @@ export function usePlayerIdentity() {
       }
     }
 
-    const identity = createGuestIdentity();
+    // No stored guest — ask for name
+    setNeedsName(true);
+  }, [loading, user]);
+
+  const setGuestName = useCallback((name: string) => {
+    const trimmed = name.trim().slice(0, 32);
+    if (!trimmed) return;
+
+    const identity: PlayerIdentity = {
+      userId: `guest-${crypto.randomUUID()}`,
+      username: trimmed,
+      isGuest: true,
+    };
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(identity));
     setGuest(identity);
-  }, [loading, user]);
+    setNeedsName(false);
+  }, []);
 
   if (user) {
     return {
       player: { userId: user.userId, username: user.username, image: user.image, isGuest: false },
       loading: false,
       isAuthenticated: true,
+      needsName: false,
+      setGuestName,
     };
   }
 
@@ -43,5 +59,7 @@ export function usePlayerIdentity() {
     player: guest,
     loading,
     isAuthenticated: false,
+    needsName,
+    setGuestName,
   };
 }
