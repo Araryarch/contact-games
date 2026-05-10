@@ -2,15 +2,16 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useRooms, useCreateRoom } from "@/hooks/use-rooms";
+import { useAuth } from "@/hooks/use-auth";
 import { Gamepad2 } from "lucide-react";
 
 export default function RoomsPage() {
   const router = useRouter();
+  const { user, loading } = useAuth();
   const [roomName, setRoomName] = useState("");
   const [isPublic, setIsPublic] = useState(true);
   const [joinCode, setJoinCode] = useState("");
@@ -31,26 +32,33 @@ export default function RoomsPage() {
           <Gamepad2 className="w-8 h-8" />
           Room
         </h1>
-        <div className="flex gap-2">
-          <Link href="/leaderboard"><Button variant="neutral" size="sm">Leaderboard</Button></Link>
-          <Link href="/"><Button variant="neutral" size="sm">Home</Button></Link>
-        </div>
       </div>
 
       {/* Create Room */}
       <Card>
-        <CardHeader><CardTitle className="font-heading">Buat Room Baru</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="font-heading">Buat Room Baru</CardTitle>
+          {!loading && !user && (
+            <CardDescription>Login dulu kalau mau bikin room. Guest tetap bisa join room yang sudah ada.</CardDescription>
+          )}
+        </CardHeader>
         <CardContent className="flex flex-col gap-3">
           <Input placeholder="Nama room (opsional)" value={roomName}
-            onChange={(e) => setRoomName(e.target.value)} />
+            onChange={(e) => setRoomName(e.target.value)} disabled={!user} />
           <label className="flex items-center gap-2 cursor-pointer font-base text-sm">
-            <input type="checkbox" checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)} className="w-4 h-4" />
+            <input type="checkbox" checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)} className="w-4 h-4" disabled={!user} />
             Room publik (tampil di daftar)
           </label>
-          <Button onClick={() => createRoom.mutate({ name: roomName || undefined, isPublic })}
-            disabled={createRoom.isPending}>
-            {createRoom.isPending ? "Membuat..." : "Buat Room"}
-          </Button>
+          {user ? (
+            <Button onClick={() => createRoom.mutate({ name: roomName || undefined, isPublic })}
+              disabled={createRoom.isPending}>
+              {createRoom.isPending ? "Membuat..." : "Buat Room"}
+            </Button>
+          ) : (
+            <Button onClick={() => router.push("/login")}>
+              Login untuk Buat Room
+            </Button>
+          )}
         </CardContent>
       </Card>
 

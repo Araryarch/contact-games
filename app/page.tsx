@@ -27,20 +27,6 @@ export default async function LandingPage() {
 
   return (
     <main className="min-h-screen flex flex-col">
-      {/* Nav */}
-      <nav className="border-b-2 border-border bg-secondary-background px-6 py-3 flex items-center justify-between sticky top-0 z-50">
-        <span className="text-xl font-heading font-bold flex items-center gap-2">
-          <Type className="w-5 h-5" />
-          Contact!
-        </span>
-        <div className="flex gap-2">
-          <Link href="/leaderboard"><Button variant="neutral" size="sm">Leaderboard</Button></Link>
-          {isLoggedIn
-            ? <Link href="/rooms"><Button size="sm">Buka Room</Button></Link>
-            : <Link href="/login"><Button size="sm">Login</Button></Link>}
-        </div>
-      </nav>
-
       {/* Hero */}
       <section className="flex flex-col items-center justify-center text-center px-4 py-16 gap-6 bg-gradient-to-b from-background to-secondary-background">
         <Badge className="text-sm px-4 py-1">Multiplayer Real-time</Badge>

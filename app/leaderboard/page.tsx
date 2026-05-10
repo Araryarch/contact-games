@@ -1,8 +1,6 @@
-import Link from "next/link";
 import { db } from "@/lib/db";
 import { leaderboard, users } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Trophy, Medal } from "lucide-react";
@@ -25,16 +23,10 @@ export default async function LeaderboardPage() {
 
   return (
     <main className="min-h-screen p-4 max-w-2xl mx-auto py-8 flex flex-col gap-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-heading font-bold flex items-center gap-2">
-          <Trophy className="w-8 h-8" />
-          Leaderboard
-        </h1>
-        <div className="flex gap-2">
-          <Link href="/rooms"><Button size="sm">Main</Button></Link>
-          <Link href="/"><Button variant="neutral" size="sm">Home</Button></Link>
-        </div>
-      </div>
+      <h1 className="text-3xl font-heading font-bold flex items-center gap-2">
+        <Trophy className="w-8 h-8" />
+        Leaderboard
+      </h1>
 
       <Card>
         <CardHeader>

@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
 import { rooms, roomPlayers } from "@/lib/db/schema";
-import { eq, count, desc } from "drizzle-orm";
+import { and, eq, count, desc, ne } from "drizzle-orm";
 
 export async function GET() {
   const publicRooms = await db
@@ -12,7 +12,7 @@ export async function GET() {
     })
     .from(rooms)
     .leftJoin(roomPlayers, eq(rooms.id, roomPlayers.roomId))
-    .where(eq(rooms.isPublic, true))
+    .where(and(eq(rooms.isPublic, true), ne(rooms.status, "finished")))
     .groupBy(rooms.id)
     .orderBy(desc(rooms.createdAt))
     .limit(20);

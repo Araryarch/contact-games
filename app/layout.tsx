@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import Providers from "@/components/providers";
+import Navbar from "@/components/navbar";
+import NavbarSkeleton from "@/components/navbar-skeleton";
 
 const jetbrainsMono = JetBrains_Mono({ 
   variable: "--font-jetbrains-mono", 
@@ -18,7 +21,12 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="id" className={jetbrainsMono.variable}>
       <body className="min-h-screen bg-background">
-        <Providers>{children}</Providers>
+        <Providers>
+          <Suspense fallback={<NavbarSkeleton />}>
+            <Navbar />
+          </Suspense>
+          {children}
+        </Providers>
       </body>
     </html>
   );

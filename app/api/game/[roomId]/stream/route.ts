@@ -2,6 +2,7 @@ import { auth } from "@/auth";
 import { db } from "@/lib/db";
 import { rooms, roomPlayers } from "@/lib/db/schema";
 import { getRoom, subscribe, addPlayer, createRoom } from "@/lib/game-store";
+import { getGuestIdentityFromSearchParams } from "@/lib/player-identity";
 import { eq } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
@@ -11,22 +12,33 @@ export async function GET(
   ctx: RouteContext<"/api/game/[roomId]/stream">,
 ) {
   const session = await auth();
-  if (!session?.user?.id) return new Response("Unauthorized", { status: 401 });
+  const url = new URL(req.url);
+  const player = session?.user?.id
+    ? { userId: session.user.id, username: session.user.name ?? "player", isGuest: false }
+    : getGuestIdentityFromSearchParams(url.searchParams);
+  if (!player) return new Response("Unauthorized", { status: 401 });
 
   const { roomId } = await ctx.params;
-  const userId = session.user.id;
-  const username = session.user.name ?? "player";
+  const { userId, username } = player;
 
   let room = getRoom(roomId);
   if (!room) {
     const dbRoom = await db.query.rooms.findFirst({ where: eq(rooms.id, roomId) });
     if (!dbRoom) return new Response("Room not found", { status: 404 });
+    if (dbRoom.status === "finished") return new Response("Room finished", { status: 404 });
     room = createRoom(roomId, dbRoom.hostId);
   }
+  if (room.phase === "won" || room.phase === "lost") {
+    return new Response("Room finished", { status: 404 });
+  }
 
-  await db.insert(roomPlayers).values({ roomId, userId }).onConflictDoNothing();
-  addPlayer(roomId, { userId, username });
-  await db.update(rooms).set({ status: "playing" }).where(eq(rooms.id, roomId));
+  const canJoinAsPlayer = room.phase === "setup";
+  if (canJoinAsPlayer && !player.isGuest) {
+    await db.insert(roomPlayers).values({ roomId, userId }).onConflictDoNothing();
+  }
+  if (canJoinAsPlayer) {
+    addPlayer(roomId, { userId, username });
+  }
 
   const stream = new ReadableStream({
     start(controller) {

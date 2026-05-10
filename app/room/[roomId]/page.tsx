@@ -1,16 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
+import { useParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { useGameStream } from "@/hooks/use-game-stream";
 import { useGameAction } from "@/hooks/use-game-action";
-import { useAuth } from "@/hooks/use-auth";
-import { Type, Shield, PartyPopper, CheckCircle, XCircle, Megaphone, MessageSquare, ClipboardList, Ban, Trophy } from "lucide-react";
+import { usePlayerIdentity } from "@/hooks/use-player-identity";
+import { Type, Shield, PartyPopper, CheckCircle, XCircle, Megaphone, MessageSquare, ClipboardList, Ban, Heart, Send } from "lucide-react";
 
 function getHint(word: string, revealed: number) {
   return word.toUpperCase().split("").map((ch, i) => (i < revealed ? ch : "_")).join(" ");
@@ -18,10 +18,9 @@ function getHint(word: string, revealed: number) {
 
 export default function RoomPage() {
   const { roomId } = useParams<{ roomId: string }>();
-  const router = useRouter();
-  const { user } = useAuth();
-  const { game, error } = useGameStream(roomId);
-  const { mutate: act } = useGameAction(roomId);
+  const { player, loading } = usePlayerIdentity();
+  const { game, error } = useGameStream(roomId, player);
+  const { mutate: act } = useGameAction(roomId, player);
 
   const [secretWord, setSecretWord] = useState("");
   const [clueText, setClueText] = useState("");
@@ -29,8 +28,13 @@ export default function RoomPage() {
   const [defenderGuess, setDefenderGuess] = useState("");
   const [contactGuesserWord, setContactGuesserWord] = useState("");
   const [contactDefenderWord, setContactDefenderWord] = useState("");
+  const [chatText, setChatText] = useState("");
 
-  if (!user) return null; // proxy handles redirect
+  if (loading || !player) return (
+    <main className="min-h-screen flex items-center justify-center p-4">
+      <p className="font-base">Menyiapkan pemain...</p>
+    </main>
+  );
 
   if (error) return (
     <main className="min-h-screen flex items-center justify-center p-4">
@@ -47,7 +51,11 @@ export default function RoomPage() {
   );
 
   const hint = game.secretWord ? getHint(game.secretWord, game.revealedLetters) : "";
-  const isHost = game.hostId === user.userId;
+  const isHost = game.hostId === player.userId;
+  const remainingLives = game.remainingLives ?? 0;
+  const maxLives = game.maxLives ?? 0;
+  const livesLabel = `${remainingLives} / ${maxLives} nyawa`;
+  const isPlayer = game.players.some((p) => p.userId === player.userId);
 
   // ── Setup ──────────────────────────────────────────────────────────────────
   if (game.phase === "setup") return (
@@ -62,6 +70,12 @@ export default function RoomPage() {
             {isHost ? "Kamu adalah Defender. Masukkan kata rahasia." : "Menunggu Defender memulai..."}
           </CardDescription>
         </CardHeader>
+        <CardContent className="pt-0">
+          <Badge variant="neutral" className="flex w-fit items-center gap-1">
+            <Heart className="w-3 h-3" />
+            Nyawa Penebak: {livesLabel}
+          </Badge>
+        </CardContent>
         {isHost ? (
           <>
             <CardContent>
@@ -76,8 +90,8 @@ export default function RoomPage() {
         ) : (
           <CardContent>
             <div className="flex flex-wrap gap-2">
-              {game.players.map((p) => (
-                <Badge key={p.userId} variant={p.userId === game.hostId ? "default" : "neutral"}>
+            {game.players.map((p) => (
+              <Badge key={p.userId} variant={p.userId === game.hostId ? "default" : "neutral"}>
                   {p.userId === game.hostId && <Shield className="w-3 h-3" />}
                   {p.username}
                 </Badge>
@@ -112,6 +126,10 @@ export default function RoomPage() {
           <div className="text-2xl font-heading border-2 border-border bg-main text-main-foreground rounded-none px-6 py-4 shadow-shadow">
             {game.secretWord}
           </div>
+          <Badge variant="neutral" className="flex items-center gap-1">
+            <Heart className="w-3 h-3" />
+            Nyawa Penebak: {livesLabel}
+          </Badge>
           <div className="flex flex-wrap gap-2 justify-center">
             {game.players.map((p) => (
               <Badge key={p.userId} variant={p.userId === game.hostId ? "default" : "neutral"}>{p.username}</Badge>
@@ -119,7 +137,6 @@ export default function RoomPage() {
           </div>
         </CardContent>
         <CardFooter className="justify-center gap-2">
-          {isHost && <Button onClick={() => act({ type: "reset" })}>Main Lagi</Button>}
           <Link href="/rooms"><Button variant="neutral">Kembali</Button></Link>
         </CardFooter>
       </Card>
@@ -156,6 +173,16 @@ export default function RoomPage() {
             <Badge variant="neutral">{game.contactDefenderWord}</Badge>
           </div>
         </CardContent>
+        {!game.resultMatch && (
+          <CardContent className="pt-0">
+            <div className="flex justify-center">
+              <Badge variant="neutral" className="flex items-center gap-1">
+                <Heart className="w-3 h-3" />
+                Sisa Nyawa: {livesLabel}
+              </Badge>
+            </div>
+          </CardContent>
+        )}
         {game.resultMatch && <CardContent><div className="text-2xl font-heading tracking-widest">{hint}</div></CardContent>}
         <CardFooter className="justify-center">
           <Button onClick={() => act({ type: "continue" })}>Lanjutkan</Button>
@@ -248,7 +275,12 @@ export default function RoomPage() {
             <Button className="flex-1" onClick={() => { act({ type: "defender-guess", guess: defenderGuess }); setDefenderGuess(""); }}>
               Konfirmasi
             </Button>
-            <Button variant="neutral" onClick={() => act({ type: "defender-guess-cancel" })}>Batal</Button>
+            <Button variant="neutral" onClick={() => { act({ type: "defender-wrong" }); setDefenderGuess(""); }}>
+              Salah
+            </Button>
+            <Button variant="neutral" onClick={() => { act({ type: "defender-ignore" }); setDefenderGuess(""); }}>
+              Ignore
+            </Button>
           </CardFooter>
         </Card>
       </main>
@@ -256,11 +288,18 @@ export default function RoomPage() {
   }
 
   // ── Playing ────────────────────────────────────────────────────────────────
-  const pendingClues = game.clues.filter((c) => c.status === "pending");
+  const pendingClues = game.clues.filter((c) => c.status === "pending" || c.status === "approved");
   const blockedClues = game.clues.filter((c) => c.status === "blocked");
+  const chatMessages = game.chatMessages ?? [];
+  const sendChat = () => {
+    const text = chatText.trim();
+    if (!text) return;
+    act({ type: "send-chat", userId: player.userId, username: player.username, text });
+    setChatText("");
+  };
 
   return (
-    <main className="min-h-screen p-4 max-w-2xl mx-auto flex flex-col gap-6 py-8">
+    <main className="min-h-screen p-4 max-w-2xl mx-auto xl:ml-auto xl:mr-[24rem] flex flex-col gap-6 py-8">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-heading font-bold flex items-center gap-2">
           <Type className="w-6 h-6" />
@@ -268,28 +307,34 @@ export default function RoomPage() {
         </h1>
         <div className="flex items-center gap-2">
           <Badge variant="neutral" className="font-mono text-xs">{roomId}</Badge>
-          <Link href="/rooms"><Button variant="neutral" size="sm">Rooms</Button></Link>
         </div>
       </div>
 
       <div className="flex flex-wrap gap-2">
-        {game.players.map((p) => (
-          <Badge key={p.userId} variant={p.userId === game.hostId ? "default" : "neutral"}>
-            {p.userId === game.hostId && <Shield className="w-3 h-3" />}
-            {p.username}{p.userId === user.userId ? " (kamu)" : ""}
-          </Badge>
-        ))}
+            {game.players.map((p) => (
+              <Badge key={p.userId} variant={p.userId === game.hostId ? "default" : "neutral"}>
+                {p.userId === game.hostId && <Shield className="w-3 h-3" />}
+            {p.username}{p.userId === player.userId ? " (kamu)" : ""}
+              </Badge>
+            ))}
+            {!isPlayer && <Badge variant="neutral">Spectator</Badge>}
       </div>
 
       <Card>
         <CardContent className="pt-6 flex flex-col items-center gap-2">
           <span className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">Kata Rahasia</span>
           <div className="text-4xl font-heading tracking-[0.3em] font-bold">{hint}</div>
-          <Badge>{game.revealedLetters} / {game.secretWord.length} huruf</Badge>
+          <div className="flex flex-wrap items-center justify-center gap-2">
+            <Badge>{game.revealedLetters} / {game.secretWord.length} huruf</Badge>
+            <Badge variant="neutral" className="flex items-center gap-1">
+              <Heart className="w-3 h-3" />
+              Nyawa Penebak: {livesLabel}
+            </Badge>
+          </div>
         </CardContent>
       </Card>
 
-      {!isHost && (
+      {isPlayer && !isHost && (
         <Card>
           <CardHeader>
             <CardTitle className="text-lg font-heading flex items-center gap-2">
@@ -304,14 +349,14 @@ export default function RoomPage() {
               value={guesserWord} onChange={(e) => setGuesserWord(e.target.value.toUpperCase())}
               onKeyDown={(e) => {
                 if (e.key === "Enter") {
-                  act({ type: "submit-clue", userId: user.userId, guesserName: user.username, clueText, guesserWord });
+                  act({ type: "submit-clue", userId: player.userId, guesserName: player.username, clueText, guesserWord });
                   setClueText(""); setGuesserWord("");
                 }
               }} />
           </CardContent>
           <CardFooter>
             <Button className="w-full" onClick={() => {
-              act({ type: "submit-clue", userId: user.userId, guesserName: user.username, clueText, guesserWord });
+              act({ type: "submit-clue", userId: player.userId, guesserName: player.username, clueText, guesserWord });
               setClueText(""); setGuesserWord("");
             }}>Kirim Petunjuk</Button>
           </CardFooter>
@@ -330,20 +375,26 @@ export default function RoomPage() {
                 <div className="flex flex-col gap-1 flex-1">
                   <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{clue.guesserName}</span>
                   <p className="font-base">&ldquo;{clue.clueText}&rdquo;</p>
-                  <Badge variant="neutral" className="w-fit text-xs">Kata tersembunyi</Badge>
+                  <Badge variant="neutral" className="w-fit text-xs">
+                    {clue.status === "approved" ? "Bisa Contact" : "Menunggu Defender"}
+                  </Badge>
                 </div>
-                <div className="flex flex-col gap-2 shrink-0">
-                  {isHost && (
+                {isPlayer && (
+                  <div className="flex flex-col gap-2 shrink-0">
+                    {isHost && clue.status === "pending" && (
                     <Button size="sm" variant="neutral" onClick={() => act({ type: "defender-block", clueId: clue.id })}>
                       <Shield className="w-4 h-4" />
                       Blok
                     </Button>
-                  )}
+                    )}
+                    {clue.status === "approved" && (
                   <Button size="sm" onClick={() => act({ type: "call-contact", clueId: clue.id })}>
                     <Megaphone className="w-4 h-4" />
                     Contact!
                   </Button>
-                </div>
+                    )}
+                  </div>
+                )}
               </CardContent>
             </Card>
           ))}
@@ -370,14 +421,56 @@ export default function RoomPage() {
         </div>
       )}
 
-      {isHost && (
-        <div className="mt-auto pt-4 border-t-2 border-border">
-          <Button variant="neutral" className="w-full" onClick={() => act({ type: "defender-wins" })}>
-            <Trophy className="w-4 h-4" />
-            Defender Menang
-          </Button>
-        </div>
-      )}
+      <aside className="xl:fixed xl:right-4 xl:top-24 xl:w-[22rem]">
+        <Card className="h-[32rem] max-h-[calc(100vh-8rem)] gap-0 py-0">
+          <CardHeader className="border-b-2 border-border py-4">
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <MessageSquare className="w-5 h-5" />
+              Chat Room
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex min-h-0 flex-1 flex-col gap-3 px-4 py-4">
+            <div className="flex min-h-0 flex-1 flex-col-reverse gap-2 overflow-y-auto pr-1">
+              {chatMessages.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Belum ada chat.</p>
+              ) : (
+                [...chatMessages].reverse().map((message) => (
+                  <div
+                    key={message.id}
+                    className={
+                      message.userId === player.userId
+                        ? "ml-8 border-2 border-border bg-main px-3 py-2 text-main-foreground"
+                        : "mr-8 border-2 border-border bg-secondary-background px-3 py-2"
+                    }
+                  >
+                    <div className="mb-1 flex items-center justify-between gap-2">
+                      <span className="truncate text-xs font-heading font-bold">{message.username}</span>
+                      <span className="shrink-0 text-[10px] opacity-70">
+                        {new Date(message.createdAt).toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    </div>
+                    <p className="break-words text-sm">{message.text}</p>
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="flex gap-2 border-t-2 border-border pt-3">
+              <Input
+                maxLength={240}
+                placeholder="Tulis chat..."
+                value={chatText}
+                onChange={(e) => setChatText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") sendChat();
+                }}
+              />
+              <Button type="button" size="icon" onClick={sendChat} aria-label="Kirim chat">
+                <Send className="w-4 h-4" />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </aside>
     </main>
   );
 }

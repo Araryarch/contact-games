@@ -2,7 +2,7 @@ import { auth, signIn } from "@/auth";
 import { redirect } from "next/navigation";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Type, GitHub } from "lucide-react";
+import { Type, GitBranch } from "lucide-react";
 
 export default async function LoginPage() {
   const session = await auth();
@@ -34,7 +34,7 @@ export default async function LoginPage() {
               await signIn("github", { redirectTo: "/rooms" });
             }}>
               <Button className="w-full" type="submit" size="lg">
-                <GitHub className="w-5 h-5" />
+                <GitBranch className="w-5 h-5" />
                 Login dengan GitHub
               </Button>
             </form>
