@@ -1,26 +1,48 @@
 @import "tailwindcss";
+@import "tw-animate-css";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@custom-variant dark (&:is(.dark *));
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-main: var(--main);
+  --color-main-foreground: var(--main-foreground);
+  --color-secondary-background: var(--secondary-background);
+  --color-border: var(--border);
+  --shadow-shadow: var(--shadow);
+  --color-muted-foreground: var(--muted-foreground);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-base: var(--font-geist-sans);
+  --font-heading: var(--font-geist-sans);
+
+  --radius-base: 5px;
+
+  --translate-x-boxShadowX: 4px;
+  --translate-y-boxShadowY: 4px;
+  --translate-x-reverseBoxShadowX: -4px;
+  --translate-y-reverseBoxShadowY: -4px;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+:root {
+  --background: #dfe5f2;
+  --foreground: #000;
+  --main: #88aaee;
+  --main-foreground: #000;
+  --secondary-background: #fff;
+  --border: #000;
+  --shadow: 4px 4px 0px 0px #000;
+  --muted-foreground: #555;
+}
+
+@layer base {
+  * {
+    @apply border-border;
   }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-base);
+  }
 }
