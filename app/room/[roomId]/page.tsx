@@ -109,7 +109,7 @@ export default function RoomPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4 items-center">
-          <div className="text-2xl font-heading border-2 border-border bg-main text-main-foreground rounded-base px-6 py-4 shadow-shadow">
+          <div className="text-2xl font-heading border-2 border-border bg-main text-main-foreground rounded-none px-6 py-4 shadow-shadow">
             {game.secretWord}
           </div>
           <div className="flex flex-wrap gap-2 justify-center">
@@ -171,7 +171,10 @@ export default function RoomPage() {
       <main className="min-h-screen flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle className="text-2xl font-heading">📢 CONTACT!</CardTitle>
+            <CardTitle className="text-2xl font-heading flex items-center gap-2">
+              <Megaphone className="w-6 h-6" />
+              CONTACT!
+            </CardTitle>
             <CardDescription>Petunjuk: &ldquo;{activeClue?.clueText}&rdquo;<br />3... 2... 1...</CardDescription>
           </CardHeader>
           <CardContent className="flex flex-col gap-3">
@@ -205,13 +208,13 @@ export default function RoomPage() {
         <CardContent className="flex gap-6 justify-center">
           <div className="flex flex-col items-center gap-2">
             <span className="text-sm font-semibold uppercase tracking-wide">Penebak</span>
-            <div className="border-2 border-border bg-main text-main-foreground rounded-base px-4 py-2 shadow-shadow font-heading text-xl">
+            <div className="border-2 border-border bg-main text-main-foreground rounded-none px-4 py-2 shadow-shadow font-heading text-xl">
               {game.contactGuesserWord}
             </div>
           </div>
           <div className="flex flex-col items-center gap-2">
             <span className="text-sm font-semibold uppercase tracking-wide">Defender</span>
-            <div className="border-2 border-border bg-secondary-background rounded-base px-4 py-2 shadow-shadow font-heading text-xl">
+            <div className="border-2 border-border bg-secondary-background rounded-none px-4 py-2 shadow-shadow font-heading text-xl">
               {game.contactDefenderWord}
             </div>
           </div>
@@ -230,7 +233,10 @@ export default function RoomPage() {
       <main className="min-h-screen flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle className="text-2xl font-heading">🛡️ Tebakan Defender</CardTitle>
+            <CardTitle className="text-2xl font-heading flex items-center gap-2">
+              <Shield className="w-6 h-6" />
+              Tebakan Defender
+            </CardTitle>
             <CardDescription>Petunjuk: &ldquo;{activeClue?.clueText}&rdquo;</CardDescription>
           </CardHeader>
           <CardContent>

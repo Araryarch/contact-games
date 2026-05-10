@@ -57,7 +57,7 @@ export default async function LeaderboardPage() {
               </span>
               {row.avatarUrl && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={row.avatarUrl} alt="" className="w-8 h-8 rounded-full border-2 border-border" />
+                <img src={row.avatarUrl} alt="" className="w-8 h-8 rounded-none border-2 border-border" />
               )}
               <span className="flex-1 font-heading font-semibold">{row.username}</span>
               <div className="flex gap-2 items-center">

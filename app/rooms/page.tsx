@@ -83,7 +83,7 @@ export default function RoomsPage() {
               <div className="flex flex-col gap-1">
                 <span className="font-heading font-semibold">{room.name}</span>
                 <div className="flex gap-2 items-center">
-                  <span className={`text-xs px-2 py-0.5 rounded font-base font-semibold ${statusColor[room.status] ?? ""}`}>
+                  <span className={`text-xs px-2 py-0.5 rounded-none font-base font-semibold ${statusColor[room.status] ?? ""}`}>
                     {room.status}
                   </span>
                   <span className="text-xs text-muted-foreground font-base">{room.playerCount} pemain</span>

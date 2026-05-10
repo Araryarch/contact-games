@@ -13,12 +13,12 @@
   --shadow-shadow: var(--shadow);
   --color-muted-foreground: var(--muted-foreground);
 
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-base: var(--font-geist-sans);
-  --font-heading: var(--font-geist-sans);
+  --font-sans: var(--font-jetbrains-mono);
+  --font-mono: var(--font-jetbrains-mono);
+  --font-base: var(--font-jetbrains-mono);
+  --font-heading: var(--font-jetbrains-mono);
 
-  --radius-base: 5px;
+  --radius-base: 0px;
 
   --translate-x-boxShadowX: 4px;
   --translate-y-boxShadowY: 4px;
