@@ -24,8 +24,14 @@ export async function GET(
   let room = getRoom(roomId);
   if (!room) {
     const dbRoom = await db.query.rooms.findFirst({ where: eq(rooms.id, roomId) });
-    if (!dbRoom) return new Response("Room not found", { status: 404 });
-    if (dbRoom.status === "finished") return new Response("Room finished", { status: 404 });
+    if (!dbRoom) {
+      console.log("Room not found in DB:", roomId);
+      return new Response("Room not found", { status: 404 });
+    }
+    if (dbRoom.status === "finished") {
+      console.log("Room finished:", roomId);
+      return new Response("Room finished", { status: 404 });
+    }
     room = createRoom(roomId, dbRoom.hostId);
   }
   if (room.phase === "won" || room.phase === "lost") {
@@ -33,10 +39,10 @@ export async function GET(
   }
 
   const canJoinAsPlayer = room.phase === "setup";
-  if (canJoinAsPlayer && !player.isGuest) {
-    await db.insert(roomPlayers).values({ roomId, userId }).onConflictDoNothing();
-  }
   if (canJoinAsPlayer) {
+    if (!player.isGuest) {
+      await db.insert(roomPlayers).values({ roomId, userId }).onConflictDoNothing();
+    }
     addPlayer(roomId, { userId, username });
   }
 

@@ -50,7 +50,7 @@ export const rooms = pgTable("rooms", {
 });
 
 export const roomPlayers = pgTable("room_players", {
-  roomId: text("room_id").notNull().references(() => rooms.id),
+  roomId: text("room_id").notNull().references(() => rooms.id, { onDelete: "cascade" }),
   userId: text("user_id").notNull().references(() => users.id),
   joinedAt: timestamp("joined_at").defaultNow().notNull(),
 }, (t) => [primaryKey({ columns: [t.roomId, t.userId] })]);

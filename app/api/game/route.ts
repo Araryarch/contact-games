@@ -8,12 +8,15 @@ import { nanoid } from "nanoid";
 
 setWinCallback(async (roomId, winner, players) => {
   try {
-    await db.update(rooms).set({ status: "finished" }).where(eq(rooms.id, roomId));
     const room = await db.query.rooms.findFirst({ where: eq(rooms.id, roomId) });
     if (!room) return;
+
+    const hostId = room.hostId;
+    await db.delete(rooms).where(eq(rooms.id, roomId));
+
     const winnerIds = winner === "defender"
-      ? [room.hostId]
-      : players.filter((p) => p.userId !== room.hostId).map((p) => p.userId);
+      ? [hostId]
+      : players.filter((p) => p.userId !== hostId).map((p) => p.userId);
     for (const userId of winnerIds) {
       await db.update(leaderboard)
         .set({ points: sql`${leaderboard.points} + 20`, wins: sql`${leaderboard.wins} + 1` })

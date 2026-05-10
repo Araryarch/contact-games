@@ -37,9 +37,6 @@ export interface GameState {
   hostId: string;
   secretWord: string;
   revealedLetters: number;
-  failedContacts: number;
-  maxLives: number;
-  remainingLives: number;
   clues: Clue[];
   players: Player[];
   phase: Phase;
@@ -61,9 +58,6 @@ const subscribers = new Map<string, Set<Subscriber>>();
 let onWin: WinCallback | null = null;
 
 function ensureGameState(state: GameState): GameState {
-  if (state.failedContacts == null) state.failedContacts = 0;
-  if (state.maxLives == null) state.maxLives = 0;
-  if (state.remainingLives == null) state.remainingLives = state.maxLives ?? 0;
   if (state.chatMessages == null) state.chatMessages = [];
   if (state.nextChatId == null) state.nextChatId = 1;
   return state;
@@ -82,8 +76,6 @@ export function createRoom(roomId: string, hostId: string): GameState {
   const state: GameState = {
     roomId, hostId,
     secretWord: "", revealedLetters: 1,
-    failedContacts: 0,
-    maxLives: 0, remainingLives: 0,
     clues: [], players: [],
     phase: "setup", activeClueId: null,
     contactGuesserWord: "", contactDefenderWord: "",
@@ -148,15 +140,12 @@ export function applyAction(roomId: string, action: Action): { error?: string } 
 
   switch (action.type) {
     case "start": {
+      if (g.players.length < 3) return { error: "Minimal 3 pemain untuk memulai" };
       const word = action.secretWord.trim().toUpperCase();
       if (word.length < 2) return { error: "Kata terlalu pendek" };
-      const lives = word.length * 2;
       update(roomId, {
         secretWord: word,
         revealedLetters: 1,
-        failedContacts: 0,
-        maxLives: lives,
-        remainingLives: lives,
         phase: "playing",
       });
       break;
@@ -242,6 +231,7 @@ export function applyAction(roomId: string, action: Action): { error?: string } 
       if (g.phase !== "contact-reveal") return { error: "Bukan fase reveal" };
       const match = g.contactGuesserWord === g.contactDefenderWord;
       const blockedClues = g.clues.map((c) => c.id === g.activeClueId ? { ...c, status: "blocked" as const } : c);
+
       if (match) {
         const newRevealed = g.revealedLetters + 1;
         if (newRevealed >= g.secretWord.length) {
@@ -251,46 +241,22 @@ export function applyAction(roomId: string, action: Action): { error?: string } 
           update(roomId, { revealedLetters: newRevealed, resultMatch: true, phase: "result", clues: blockedClues });
         }
       } else {
-        const failedContacts = g.failedContacts + 1;
-        const remainingLives = g.remainingLives - 1;
-        const shouldRevealHint = failedContacts % 2 === 0;
-        const revealedLetters = shouldRevealHint
-          ? Math.min(g.revealedLetters + 1, g.secretWord.length)
-          : g.revealedLetters;
-
-        if (shouldRevealHint && revealedLetters >= g.secretWord.length) {
+        const newRevealed = g.revealedLetters + 1;
+        if (newRevealed >= g.secretWord.length) {
           update(roomId, {
+            revealedLetters: newRevealed,
             resultMatch: false,
             clues: blockedClues,
-            failedContacts,
-            remainingLives: Math.max(remainingLives, 0),
-            revealedLetters,
             phase: "won",
             winner: "guessers",
           });
           onWin?.(roomId, "guessers", g.players);
-          break;
-        }
-
-        if (remainingLives <= 0) {
-          update(roomId, {
-            resultMatch: false,
-            phase: "lost",
-            winner: "defender",
-            clues: blockedClues,
-            failedContacts,
-            remainingLives: 0,
-            revealedLetters,
-          });
-          onWin?.(roomId, "defender", g.players);
         } else {
           update(roomId, {
+            revealedLetters: newRevealed,
             resultMatch: false,
-            phase: "result",
             clues: blockedClues,
-            failedContacts,
-            remainingLives,
-            revealedLetters,
+            phase: "result",
           });
         }
       }
@@ -320,9 +286,6 @@ export function applyAction(roomId: string, action: Action): { error?: string } 
       update(roomId, {
         secretWord: "",
         revealedLetters: 1,
-        failedContacts: 0,
-        maxLives: 0,
-        remainingLives: 0,
         clues: [],
         phase: "setup",
         activeClueId: null, contactGuesserWord: "", contactDefenderWord: "",

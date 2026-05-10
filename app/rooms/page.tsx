@@ -36,22 +36,23 @@ export default function RoomsPage() {
 
       {/* Create Room */}
       <Card>
-        <CardHeader>
-          <CardTitle className="font-heading">Buat Room Baru</CardTitle>
+        <CardHeader className="pb-2 sm:pb-0">
+          <CardTitle className="text-lg sm:text-xl font-heading">Buat Room Baru</CardTitle>
           {!loading && !user && (
-            <CardDescription>Login dulu kalau mau bikin room. Guest tetap bisa join room yang sudah ada.</CardDescription>
+            <CardDescription className="text-xs sm:text-sm">Login dulu kalau mau bikin room. Guest tetap bisa join room yang sudah ada.</CardDescription>
           )}
         </CardHeader>
-        <CardContent className="flex flex-col gap-3">
+        <CardContent className="flex flex-col gap-2 sm:gap-3">
           <Input placeholder="Nama room (opsional)" value={roomName}
+            className="text-sm sm:text-base"
             onChange={(e) => setRoomName(e.target.value)} disabled={!user} />
-          <label className="flex items-center gap-2 cursor-pointer font-base text-sm">
+          <label className="flex items-center gap-2 cursor-pointer font-base text-xs sm:text-sm">
             <input type="checkbox" checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)} className="w-4 h-4" disabled={!user} />
             Room publik (tampil di daftar)
           </label>
           {user ? (
             <Button onClick={() => createRoom.mutate({ name: roomName || undefined, isPublic })}
-              disabled={createRoom.isPending}>
+              disabled={createRoom.isPending} className="text-sm sm:text-base">
               {createRoom.isPending ? "Membuat..." : "Buat Room"}
             </Button>
           ) : (
@@ -64,41 +65,43 @@ export default function RoomsPage() {
 
       {/* Join by code */}
       <Card>
-        <CardHeader>
-          <CardTitle className="font-heading">Gabung dengan Kode</CardTitle>
-          <CardDescription>Masukkan kode room dari temanmu</CardDescription>
+        <CardHeader className="pb-2 sm:pb-0">
+          <CardTitle className="text-lg sm:text-xl font-heading">Gabung dengan Kode</CardTitle>
+          <CardDescription className="text-xs sm:text-sm">Masukkan kode room dari temanmu</CardDescription>
         </CardHeader>
-        <CardContent className="flex gap-2">
+        <CardContent className="flex gap-2 flex-col sm:flex-row">
           <Input placeholder="Kode room..." value={joinCode}
+            className="text-sm sm:text-base flex-1"
             onChange={(e) => setJoinCode(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && joinCode.trim() && router.push(`/room/${joinCode.trim()}`)} />
-          <Button variant="neutral" onClick={() => joinCode.trim() && router.push(`/room/${joinCode.trim()}`)}>
+          <Button variant="neutral" onClick={() => joinCode.trim() && router.push(`/room/${joinCode.trim()}`)}
+            className="shrink-0">
             Gabung
           </Button>
         </CardContent>
       </Card>
 
       {/* Public Rooms */}
-      <div className="flex flex-col gap-3">
-        <h2 className="text-xl font-heading font-semibold">Room Publik</h2>
-        {isLoading && <p className="text-muted-foreground font-base text-sm">Memuat...</p>}
+      <div className="flex flex-col gap-2 sm:gap-3">
+        <h2 className="text-lg sm:text-xl font-heading font-semibold">Room Publik</h2>
+        {isLoading && <p className="text-muted-foreground font-base text-xs sm:text-sm">Memuat...</p>}
         {!isLoading && rooms.length === 0 && (
-          <p className="text-muted-foreground font-base text-sm">Belum ada room publik. Buat yang pertama!</p>
+          <p className="text-muted-foreground font-base text-xs sm:text-sm">Belum ada room publik. Buat yang pertama!</p>
         )}
         {rooms.map((room) => (
           <Card key={room.id}>
-            <CardContent className="pt-6 flex items-center justify-between gap-4">
-              <div className="flex flex-col gap-1">
-                <span className="font-heading font-semibold">{room.name}</span>
-                <div className="flex gap-2 items-center">
-                  <span className={`text-xs px-2 py-0.5 rounded-none font-base font-semibold ${statusColor[room.status] ?? ""}`}>
+            <CardContent className="pt-4 sm:pt-6 flex items-center justify-between gap-3 sm:gap-4 flex-col sm:flex-row">
+              <div className="flex flex-col gap-1 flex-1 min-w-0">
+                <span className="font-heading font-semibold text-sm sm:text-base truncate">{room.name}</span>
+                <div className="flex gap-2 items-center flex-wrap">
+                  <span className={`text-[10px] sm:text-xs px-2 py-0.5 rounded-none font-base font-semibold ${statusColor[room.status] ?? ""}`}>
                     {room.status}
                   </span>
                   <span className="text-xs text-muted-foreground font-base">{room.playerCount} pemain</span>
                 </div>
               </div>
               <Button size="sm" variant={room.status === "finished" ? "neutral" : "default"}
-                onClick={() => router.push(`/room/${room.id}`)}>
+                onClick={() => router.push(`/room/${room.id}`)} className="shrink-0">
                 {room.status === "finished" ? "Lihat" : "Gabung"}
               </Button>
             </CardContent>

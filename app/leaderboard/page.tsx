@@ -22,39 +22,38 @@ export default async function LeaderboardPage() {
     .limit(50);
 
   return (
-    <main className="min-h-screen p-4 max-w-2xl mx-auto py-8 flex flex-col gap-6">
-      <h1 className="text-3xl font-heading font-bold flex items-center gap-2">
-        <Trophy className="w-8 h-8" />
+    <main className="min-h-screen p-4 max-w-2xl mx-auto py-6 sm:py-8 flex flex-col gap-4 sm:gap-6">
+      <h1 className="text-2xl sm:text-3xl font-heading font-bold flex items-center gap-2">
+        <Trophy className="w-6 h-6 sm:w-8 sm:h-8" />
         Leaderboard
       </h1>
 
       <Card>
         <CardHeader>
-          <CardTitle className="font-heading">Top Pemain</CardTitle>
+          <CardTitle className="font-heading text-lg sm:text-xl">Top Pemain</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-0 divide-y-2 divide-border">
           {rows.length === 0 && (
-            <p className="py-4 text-center text-muted-foreground font-base text-sm">
+            <p className="py-4 text-center text-muted-foreground font-base text-xs sm:text-sm">
               Belum ada data. Jadilah yang pertama!
             </p>
           )}
           {rows.map((row, i) => (
-            <div key={row.userId} className="flex items-center gap-4 py-3">
-              <span className="w-8 flex justify-center">
+            <div key={row.userId} className="flex items-center gap-3 sm:gap-4 py-3">
+              <span className="w-6 sm:w-8 flex justify-center">
                 {i < 3 ? (
-                  <Medal className={`w-6 h-6 ${i === 0 ? 'text-yellow-500' : i === 1 ? 'text-gray-400' : 'text-amber-600'}`} />
+                  <Medal className={`w-5 h-5 sm:w-6 sm:h-6 ${i === 0 ? 'text-yellow-500' : i === 1 ? 'text-gray-400' : 'text-amber-600'}`} />
                 ) : (
-                  <span className="text-sm font-base font-semibold text-muted-foreground">#{i + 1}</span>
+                  <span className="text-xs sm:text-sm font-base font-semibold text-muted-foreground">#{i + 1}</span>
                 )}
               </span>
               {row.avatarUrl && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={row.avatarUrl} alt="" className="w-8 h-8 rounded-none border-2 border-border" />
+                <img src={row.avatarUrl} alt="" className="w-6 h-6 sm:w-8 sm:h-8 rounded-none border-2 border-border" />
               )}
-              <span className="flex-1 font-heading font-semibold">{row.username}</span>
+              <span className="flex-1 font-heading font-semibold text-sm sm:text-base truncate">{row.username}</span>
               <div className="flex gap-2 items-center">
-                <Badge>{row.points} pts</Badge>
-                <span className="text-xs text-muted-foreground font-base">{row.wins} menang</span>
+                <Badge className="text-xs sm:text-sm">{row.points} pts</Badge>
+                <span className="text-xs text-muted-foreground font-base hidden sm:inline">{row.wins} menang</span>
               </div>
             </div>
           ))}
