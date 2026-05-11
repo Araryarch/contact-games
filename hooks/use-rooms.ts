@@ -28,14 +28,17 @@ export function useCreateRoom() {
 }
 
 export function useDeleteRoom() {
-  const router = useRouter();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (roomId: string) =>
       api.post("/api/game/" + roomId + "/action", { type: "delete" }).then((r) => r.data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["rooms"] });
-      router.push("/rooms");
+    },
+    onError: (err: unknown) => {
+      const msg =
+        (err as { response?: { data?: { error?: string } } })?.response?.data?.error ?? "Gagal hapus room";
+      alert(msg);
     },
   });
 }

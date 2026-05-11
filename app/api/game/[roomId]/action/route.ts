@@ -17,15 +17,30 @@ export async function POST(
 
   const { roomId } = await ctx.params;
   const action = (await req.json()) as Action;
+
   const room = getRoom(roomId);
+
+  if (action.type === "delete") {
+    if (!session?.user?.id) {
+      return Response.json({ error: "Hanya user login yang bisa hapus room" }, { status: 403 });
+    }
+    const dbRoom = await db.query.rooms.findFirst({ where: eq(rooms.id, roomId) });
+    if (!dbRoom) return Response.json({ error: "Room tidak ditemukan" }, { status: 404 });
+    if (dbRoom.hostId !== session.user.id) {
+      return Response.json({ error: "Hanya host yang bisa hapus room" }, { status: 403 });
+    }
+    if (room) {
+      applyAction(roomId, { type: "delete", userId: session.user.id });
+    }
+    await db.delete(rooms).where(eq(rooms.id, roomId));
+    return Response.json({ ok: true, deleted: true });
+  }
+
   if (!room) return Response.json({ error: "Room not found" }, { status: 404 });
   const isPlayer = room.players.some((p) => p.userId === player.userId);
   const isHost = room.hostId === player.userId;
   if (action.type === "start" && !isHost) {
     return Response.json({ error: "Only host can start" }, { status: 403 });
-  }
-  if (action.type === "delete" && !isHost) {
-    return Response.json({ error: "Only host can delete" }, { status: 403 });
   }
   if (action.type !== "send-chat" && !isPlayer) {
     return Response.json({ error: "Spectator hanya bisa chat" }, { status: 403 });
@@ -36,23 +51,13 @@ export async function POST(
       ? { ...action, userId: player.userId, guesserName: player.username }
       : action.type === "send-chat"
         ? { ...action, userId: player.userId, username: player.username }
-        : action.type === "delete"
+        : action.type === "surrender"
           ? { ...action, userId: player.userId }
           : action;
   const result = applyAction(roomId, normalizedAction);
   if (result.error) return Response.json({ error: result.error }, { status: 400 });
   if (action.type === "start") {
     await db.update(rooms).set({ status: "playing" }).where(eq(rooms.id, roomId));
-  }
-  if (action.type === "delete") {
-    if (!session?.user?.id) {
-      return Response.json({ error: "Only logged in users can delete" }, { status: 403 });
-    }
-    if (session.user.id !== room.hostId) {
-      return Response.json({ error: "Only host can delete" }, { status: 403 });
-    }
-    await db.delete(rooms).where(eq(rooms.id, roomId));
-    return Response.json({ ok: true, deleted: true });
   }
   return Response.json({ ok: true });
 }

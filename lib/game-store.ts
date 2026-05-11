@@ -124,8 +124,6 @@ export function addPlayer(roomId: string, player: Player) {
 function checkClueTimeout(g: GameState): GameState {
   const now = Date.now();
   const timeoutMs = g.clueTimeoutSeconds * 1000;
-  const pendingClues = g.clues.filter((c) => c.status === "pending");
-  const approvedClues = g.clues.filter((c) => c.status === "approved");
 
   let updated = false;
   const newClues = g.clues.map((clue) => {
@@ -184,8 +182,8 @@ export type Action =
   | { type: "continue" }
   | { type: "send-chat"; userId: string; username: string; text: string }
   | { type: "reset" }
-  | { type: "surrender" }
-  | { type: "delete" };
+  | { type: "surrender"; userId?: string }
+  | { type: "delete"; userId?: string };
 
 export function applyAction(roomId: string, action: Action): { error?: string } {
   const g = rooms.get(roomId);
@@ -338,6 +336,7 @@ export function applyAction(roomId: string, action: Action): { error?: string } 
       break;
     }
     case "surrender": {
+      if (!action.userId) return { error: "Unauthorized" };
       if (g.phase !== "playing" && g.phase !== "defender-guess") {
         return { error: "Bukan fase bermain" };
       }

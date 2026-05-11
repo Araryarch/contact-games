@@ -42,26 +42,28 @@ export default function RoomsPage() {
         <CardHeader className="pb-2 sm:pb-0">
           <CardTitle className="text-lg sm:text-xl font-heading">Buat Room Baru</CardTitle>
           {!loading && !user && (
-            <CardDescription className="text-xs sm:text-sm">Login dulu kalau mau bikin room. Guest tetap bisa join room yang sudah ada.</CardDescription>
+            <CardDescription className="text-xs sm:text-sm">Login dulu kalau mau bikin room.</CardDescription>
           )}
         </CardHeader>
         <CardContent className="flex flex-col gap-2 sm:gap-3">
-          <Input placeholder="Nama room (opsional)" value={roomName}
-            className="text-sm sm:text-base"
-            onChange={(e) => setRoomName(e.target.value)} disabled={!user} />
-          <label className="flex items-center gap-2 cursor-pointer font-base text-xs sm:text-sm">
-            <input type="checkbox" checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)} className="w-4 h-4" disabled={!user} />
-            Room publik (tampil di daftar)
-          </label>
-          {user ? (
-            <Button onClick={() => createRoom.mutate({ name: roomName || undefined, isPublic })}
-              disabled={createRoom.isPending} className="text-sm sm:text-base">
-              {createRoom.isPending ? "Membuat..." : "Buat Room"}
-            </Button>
-          ) : (
-            <Button onClick={() => router.push("/login")}>
+          {!user ? (
+            <Button onClick={() => router.push("/login")} size="lg">
               Login untuk Buat Room
             </Button>
+          ) : (
+            <>
+              <Input placeholder="Nama room (opsional)" value={roomName}
+                className="text-sm sm:text-base"
+                onChange={(e) => setRoomName(e.target.value)} />
+              <label className="flex items-center gap-2 cursor-pointer font-base text-xs sm:text-sm">
+                <input type="checkbox" checked={isPublic} onChange={(e) => setIsPublic(e.target.checked)} className="w-4 h-4" />
+                Room publik (tampil di daftar)
+              </label>
+              <Button onClick={() => createRoom.mutate({ name: roomName || undefined, isPublic })}
+                disabled={createRoom.isPending} className="text-sm sm:text-base">
+                {createRoom.isPending ? "Membuat..." : "Buat Room"}
+              </Button>
+            </>
           )}
         </CardContent>
       </Card>

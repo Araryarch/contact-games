@@ -10,6 +10,7 @@ import MusicToggle from "@/components/music-toggle";
 
 const links = [
   { href: "/", label: "Home" },
+  { href: "/dashboard", label: "Dashboard" },
   { href: "/rooms", label: "Rooms" },
   { href: "/leaderboard", label: "Leaderboard" },
 ];

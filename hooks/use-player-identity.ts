@@ -1,35 +1,32 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useState, useCallback } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import type { PlayerIdentity } from "@/lib/player-identity";
 
 const STORAGE_KEY = "contact-games-guest";
 
-export function usePlayerIdentity() {
-  const { user, loading } = useAuth();
-  const [guest, setGuest] = useState<PlayerIdentity | null>(null);
-  const [needsName, setNeedsName] = useState(false);
-
-  useEffect(() => {
-    if (loading || user) return;
-
+function loadGuestFromStorage(): PlayerIdentity | null {
+  if (typeof window === "undefined") return null;
+  try {
     const stored = window.localStorage.getItem(STORAGE_KEY);
     if (stored) {
-      try {
-        const parsed = JSON.parse(stored) as PlayerIdentity;
-        if (parsed.userId?.startsWith("guest-") && parsed.username) {
-          setGuest({ ...parsed, isGuest: true });
-          return;
-        }
-      } catch {
-        window.localStorage.removeItem(STORAGE_KEY);
+      const parsed = JSON.parse(stored) as PlayerIdentity;
+      if (parsed.userId?.startsWith("guest-") && parsed.username) {
+        return { ...parsed, isGuest: true };
       }
     }
+  } catch {
+    window.localStorage.removeItem(STORAGE_KEY);
+  }
+  return null;
+}
 
-    // No stored guest — ask for name
-    setNeedsName(true);
-  }, [loading, user]);
+export function usePlayerIdentity() {
+  const { user, loading } = useAuth();
+  const [guest, setGuest] = useState<PlayerIdentity | null>(loadGuestFromStorage);
+
+  const needsName = !loading && !user && !guest;
 
   const setGuestName = useCallback((name: string) => {
     const trimmed = name.trim().slice(0, 32);
@@ -42,7 +39,6 @@ export function usePlayerIdentity() {
     };
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(identity));
     setGuest(identity);
-    setNeedsName(false);
   }, []);
 
   if (user) {

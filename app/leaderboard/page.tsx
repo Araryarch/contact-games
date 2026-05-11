@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { db } from "@/lib/db";
 import { leaderboard, users } from "@/lib/db/schema";
 import { eq, desc } from "drizzle-orm";
@@ -48,7 +49,7 @@ export default async function LeaderboardPage() {
                 )}
               </span>
               {row.avatarUrl && (
-                <img src={row.avatarUrl} alt="" className="w-6 h-6 sm:w-8 sm:h-8 rounded-none border-2 border-border" />
+                <Image src={row.avatarUrl} alt="" width={32} height={32} unoptimized className="w-6 h-6 sm:w-8 sm:h-8 rounded-none border-2 border-border shrink-0" />
               )}
               <span className="flex-1 font-heading font-semibold text-sm sm:text-base truncate">{row.username}</span>
               <div className="flex gap-2 items-center">
