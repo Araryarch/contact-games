@@ -22,6 +22,27 @@ export interface Clue {
   clueText: string;
   guesserWord: string;
   status: "pending" | "approved" | "blocked" | "contact-called";
+  createdAt: number;
+}
+
+export interface GameState {
+  roomId: string;
+  hostId: string;
+  secretWord: string;
+  revealedLetters: number;
+  clues: Clue[];
+  players: Player[];
+  phase: Phase;
+  activeClueId: number | null;
+  contactGuesserWord: string;
+  contactDefenderWord: string;
+  resultMatch: boolean | null;
+  winner: "guessers" | "defender" | null;
+  nextClueId: number;
+  chatMessages: ChatMessage[];
+  nextChatId: number;
+  surrenderVotes: string[];
+  clueTimeoutSeconds: number;
 }
 
 export interface ChatMessage {
@@ -48,6 +69,7 @@ export interface GameState {
   nextClueId: number;
   chatMessages: ChatMessage[];
   nextChatId: number;
+  surrenderVotes: string[];
 }
 
 type Subscriber = (data: string) => void;
@@ -81,6 +103,8 @@ export function createRoom(roomId: string, hostId: string): GameState {
     contactGuesserWord: "", contactDefenderWord: "",
     resultMatch: null, winner: null, nextClueId: 1,
     chatMessages: [], nextChatId: 1,
+    surrenderVotes: [],
+    clueTimeoutSeconds: 60,
   };
   rooms.set(roomId, state);
   subscribers.set(roomId, new Set());
@@ -97,6 +121,30 @@ export function addPlayer(roomId: string, player: Player) {
   }
 }
 
+function checkClueTimeout(g: GameState): GameState {
+  const now = Date.now();
+  const timeoutMs = g.clueTimeoutSeconds * 1000;
+  const pendingClues = g.clues.filter((c) => c.status === "pending");
+  const approvedClues = g.clues.filter((c) => c.status === "approved");
+
+  let updated = false;
+  const newClues = g.clues.map((clue) => {
+    if (clue.status === "pending") {
+      const age = now - clue.createdAt;
+      if (age >= timeoutMs) {
+        updated = true;
+        return { ...clue, status: "approved" as const };
+      }
+    }
+    return clue;
+  });
+
+  if (updated) {
+    return { ...g, clues: newClues };
+  }
+  return g;
+}
+
 export function subscribe(roomId: string, fn: Subscriber): () => void {
   if (!subscribers.has(roomId)) subscribers.set(roomId, new Set());
   subscribers.get(roomId)!.add(fn);
@@ -106,6 +154,10 @@ export function subscribe(roomId: string, fn: Subscriber): () => void {
 function broadcast(roomId: string) {
   const state = rooms.get(roomId);
   if (!state) return;
+  const checked = checkClueTimeout(state);
+  if (checked !== state) {
+    Object.assign(state, checked);
+  }
   const data = JSON.stringify(ensureGameState(state));
   subscribers.get(roomId)?.forEach((fn) => fn(data));
 }
@@ -131,7 +183,9 @@ export type Action =
   | { type: "resolve-contact" }
   | { type: "continue" }
   | { type: "send-chat"; userId: string; username: string; text: string }
-  | { type: "reset" };
+  | { type: "reset" }
+  | { type: "surrender" }
+  | { type: "delete" };
 
 export function applyAction(roomId: string, action: Action): { error?: string } {
   const g = rooms.get(roomId);
@@ -159,6 +213,7 @@ export function applyAction(roomId: string, action: Action): { error?: string } 
         id: g.nextClueId, userId: action.userId,
         guesserName: action.guesserName, clueText: action.clueText.trim(),
         guesserWord: word, status: "pending",
+        createdAt: Date.now(),
       };
       update(roomId, { clues: [...g.clues, clue], nextClueId: g.nextClueId + 1 });
       break;
@@ -282,6 +337,26 @@ export function applyAction(roomId: string, action: Action): { error?: string } 
       });
       break;
     }
+    case "surrender": {
+      if (g.phase !== "playing" && g.phase !== "defender-guess") {
+        return { error: "Bukan fase bermain" };
+      }
+      const isGuesser = g.players.some((p) => p.userId === action.userId) && action.userId !== g.hostId;
+      if (!isGuesser) return { error: "Hanya guesser yang bisa surrender" };
+
+      if (g.surrenderVotes.includes(action.userId)) {
+        return { error: "Kamu sudah vote surrender" };
+      }
+
+      const newVotes = [...g.surrenderVotes, action.userId];
+      update(roomId, { surrenderVotes: newVotes });
+
+      if (newVotes.length >= g.players.length) {
+        update(roomId, { phase: "lost", winner: "defender", resultMatch: null });
+        onWin?.(roomId, "defender", g.players);
+      }
+      break;
+    }
     case "reset":
       update(roomId, {
         secretWord: "",
@@ -292,6 +367,12 @@ export function applyAction(roomId: string, action: Action): { error?: string } 
         resultMatch: null, winner: null, nextClueId: 1,
       });
       break;
+    case "delete": {
+      if (action.userId !== g.hostId) return { error: "Hanya host yang bisa hapus room" };
+      rooms.delete(roomId);
+      subscribers.delete(roomId);
+      break;
+    }
     default:
       return { error: "Unknown action" };
   }

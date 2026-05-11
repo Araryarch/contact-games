@@ -2,15 +2,16 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
+import { ConfirmModal } from "@/components/confirm-modal";
 import { useGameStream } from "@/hooks/use-game-stream";
 import { useGameAction } from "@/hooks/use-game-action";
 import { usePlayerIdentity } from "@/hooks/use-player-identity";
-import { Type, Shield, PartyPopper, CheckCircle, XCircle, Megaphone, MessageSquare, ClipboardList, Ban, Heart, Send, Users, Copy, Check, User } from "lucide-react";
+import { Type, Shield, PartyPopper, CheckCircle, XCircle, Megaphone, MessageSquare, ClipboardList, Ban, Heart, Send, Users, Copy, Check, User, Eye, EyeOff, Clock } from "lucide-react";
 
 function getHint(word: string, revealed: number) {
   return word.toUpperCase().split("").map((ch, i) => (i < revealed ? ch : "_")).join(" ");
@@ -136,17 +137,27 @@ function RoomCode({ roomId }: { roomId: string }) {
 /* ── Main Page ───────────────────────────────────────────────────────────────── */
 export default function RoomPage() {
   const { roomId } = useParams<{ roomId: string }>();
+  const router = useRouter();
   const { player, loading, needsName, setGuestName } = usePlayerIdentity();
   const { game, error } = useGameStream(roomId, player);
   const { mutate: act } = useGameAction(roomId, player);
 
   const [secretWord, setSecretWord] = useState("");
+  const [showSecretWord, setShowSecretWord] = useState(false);
   const [clueText, setClueText] = useState("");
   const [guesserWord, setGuesserWord] = useState("");
   const [defenderGuess, setDefenderGuess] = useState("");
   const [contactGuesserWord, setContactGuesserWord] = useState("");
   const [contactDefenderWord, setContactDefenderWord] = useState("");
   const [guestNameInput, setGuestNameInput] = useState("");
+  const [showSurrenderConfirm, setShowSurrenderConfirm] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [now, setNow] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   // ── Guest Name Prompt ──────────────────────────────────────────────────────
   if (needsName) return (
@@ -202,6 +213,7 @@ export default function RoomPage() {
   const hint = game.secretWord ? getHint(game.secretWord, game.revealedLetters) : "";
   const isHost = game.hostId === player.userId;
   const isPlayer = game.players.some((p) => p.userId === player.userId);
+  const hasVotedSurrender = game.surrenderVotes.includes(player.userId);
 
   const chatMessages = game.chatMessages ?? [];
   const sendChat = (text: string) => {
@@ -238,15 +250,31 @@ export default function RoomPage() {
         {isHost ? (
           <>
             <CardContent className="pt-2">
-              <Input type="password" placeholder="Kata rahasia..." value={secretWord}
-                className="text-base sm:text-lg"
-                onChange={(e) => setSecretWord(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && game.players.length >= 3 && act({ type: "start", secretWord })} />
+              <div className="relative">
+                <Input
+                  type={showSecretWord ? "text" : "password"}
+                  placeholder="Kata rahasia..."
+                  value={secretWord}
+                  className="text-base sm:text-lg pr-12"
+                  onChange={(e) => setSecretWord(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && game.players.length >= 3 && act({ type: "start", secretWord })}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowSecretWord(!showSecretWord)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {showSecretWord ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
             </CardContent>
-            <CardFooter>
-              <Button className="w-full" onClick={() => act({ type: "start", secretWord })}
+            <CardFooter className="flex gap-2 flex-col sm:flex-row">
+              <Button className="flex-1" onClick={() => act({ type: "start", secretWord })}
                 disabled={game.players.length < 3 || !secretWord.trim()}>
                 {game.players.length < 3 ? `${3 - game.players.length} pemain lagi...` : "Mulai"}
+              </Button>
+              <Button variant="destructive" onClick={() => setShowDeleteConfirm(true)}>
+                Hapus Room
               </Button>
             </CardFooter>
           </>
@@ -484,11 +512,23 @@ export default function RoomPage() {
                   }
                 }} />
             </CardContent>
-            <CardFooter>
-              <Button className="w-full text-sm sm:text-base" onClick={() => {
+            <CardFooter className="flex gap-2 flex-wrap">
+              <Button className="flex-1 text-sm sm:text-base min-w-[100px]" onClick={() => {
                 act({ type: "submit-clue", userId: player.userId, guesserName: player.username, clueText, guesserWord });
                 setClueText(""); setGuesserWord("");
               }}>Kirim Petunjuk</Button>
+              <Button
+                variant={hasVotedSurrender ? "neutral" : "destructive"}
+                size="sm"
+                onClick={() => {
+                  if (!hasVotedSurrender) {
+                    setShowSurrenderConfirm(true);
+                  }
+                }}
+                disabled={hasVotedSurrender}
+              >
+                {hasVotedSurrender ? `Surrender (${game.surrenderVotes.length}/${game.players.length})` : "Surrender"}
+              </Button>
             </CardFooter>
           </Card>
         )}
@@ -499,7 +539,10 @@ export default function RoomPage() {
             <h2 className="text-base sm:text-lg font-heading font-semibold flex items-center gap-2">
               <ClipboardList className="w-4 h-4 sm:w-5 sm:h-5" />Petunjuk Aktif
             </h2>
-            {pendingClues.map((clue) => (
+            {pendingClues.map((clue) => {
+              const elapsed = Math.floor((now - clue.createdAt) / 1000);
+              const remaining = Math.max(0, game.clueTimeoutSeconds - elapsed);
+              return (
               <Card key={clue.id}>
                 <CardContent className="pt-4 sm:pt-6 flex items-start justify-between gap-3 sm:gap-4">
                   <div className="flex flex-col gap-1 flex-1 min-w-0">
@@ -512,9 +555,14 @@ export default function RoomPage() {
                   {isPlayer && (
                     <div className="flex flex-col gap-2 shrink-0">
                       {isHost && clue.status === "pending" && (
-                        <Button size="sm" variant="neutral" onClick={() => act({ type: "defender-block", clueId: clue.id })}>
-                          <Shield className="w-4 h-4" />Blok
-                        </Button>
+                        <div className="flex flex-col gap-1">
+                          <Button size="sm" variant="neutral" onClick={() => act({ type: "defender-block", clueId: clue.id })}>
+                            <Shield className="w-4 h-4" />Blok
+                          </Button>
+                          <Button size="sm" variant="neutral" onClick={() => act({ type: "defender-ignore" })}>
+                            <CheckCircle className="w-4 h-4" />Approve
+                          </Button>
+                        </div>
                       )}
                       {clue.status === "approved" && (
                         <Button size="sm" onClick={() => act({ type: "call-contact", clueId: clue.id })}>
@@ -524,8 +572,16 @@ export default function RoomPage() {
                     </div>
                   )}
                 </CardContent>
+                {clue.status === "pending" && (
+                  <CardFooter className="pt-0 justify-end">
+                    <Badge variant="neutral" className={`flex items-center gap-1 text-xs ${remaining <= 10 ? "text-red-500" : ""}`}>
+                      <Clock className="w-3 h-3" />{remaining}s
+                    </Badge>
+                  </CardFooter>
+                )}
               </Card>
-            ))}
+              );
+            })}
           </div>
         )}
 
@@ -554,6 +610,31 @@ export default function RoomPage() {
       <aside className="lg:w-64 xl:w-80 shrink-0 h-48 sm:h-56 lg:h-auto">
         <ChatSidebar chatMessages={chatMessages} player={player} onSend={sendChat} />
       </aside>
+
+      {/* ── Surrender Confirm Modal ── */}
+      <ConfirmModal
+        isOpen={showSurrenderConfirm}
+        title="Vote Surrender"
+        message="Yakin vote surrender? Defender akan menang."
+        onConfirm={() => {
+          act({ type: "surrender" });
+          setShowSurrenderConfirm(false);
+        }}
+        onCancel={() => setShowSurrenderConfirm(false)}
+      />
+
+      {/* ── Delete Room Confirm Modal ── */}
+      <ConfirmModal
+        isOpen={showDeleteConfirm}
+        title="Hapus Room"
+        message="Yakin hapus room ini? Semua pemain akan dikeluarkan."
+        onConfirm={() => {
+          act({ type: "delete" });
+          setShowDeleteConfirm(false);
+          router.push("/rooms");
+        }}
+        onCancel={() => setShowDeleteConfirm(false)}
+      />
     </main>
   );
 }

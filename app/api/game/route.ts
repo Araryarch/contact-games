@@ -4,7 +4,6 @@ import { rooms, roomPlayers } from "@/lib/db/schema";
 import { createRoom, addPlayer, setWinCallback } from "@/lib/game-store";
 import { leaderboard } from "@/lib/db/schema";
 import { eq, sql } from "drizzle-orm";
-import { nanoid } from "nanoid";
 
 setWinCallback(async (roomId, winner, players) => {
   try {
@@ -38,7 +37,7 @@ export async function POST(req: Request) {
   const name = (body.name as string | undefined)?.trim() || `${username}'s room`;
   const isPublic = body.isPublic !== false;
 
-  const roomId = nanoid(8);
+  const roomId = crypto.randomUUID();
   await db.insert(rooms).values({ id: roomId, name, hostId: userId, isPublic, status: "waiting" });
   await db.insert(roomPlayers).values({ roomId, userId }).onConflictDoNothing();
 

@@ -9,6 +9,7 @@ export async function GET() {
       name: rooms.name,
       status: rooms.status,
       playerCount: count(roomPlayers.userId),
+      hostId: rooms.hostId,
     })
     .from(rooms)
     .leftJoin(roomPlayers, eq(rooms.id, roomPlayers.roomId))

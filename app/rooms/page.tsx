@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { useRooms, useCreateRoom } from "@/hooks/use-rooms";
+import { ConfirmModal } from "@/components/confirm-modal";
+import { useRooms, useCreateRoom, useDeleteRoom } from "@/hooks/use-rooms";
 import { useAuth } from "@/hooks/use-auth";
 import { Gamepad2 } from "lucide-react";
 
@@ -15,9 +16,11 @@ export default function RoomsPage() {
   const [roomName, setRoomName] = useState("");
   const [isPublic, setIsPublic] = useState(true);
   const [joinCode, setJoinCode] = useState("");
+  const [deleteRoomId, setDeleteRoomId] = useState<string | null>(null);
 
   const { data: rooms = [], isLoading } = useRooms();
   const createRoom = useCreateRoom();
+  const deleteRoom = useDeleteRoom();
 
   const statusColor: Record<string, string> = {
     waiting: "bg-green-100 text-green-800",
@@ -100,14 +103,36 @@ export default function RoomsPage() {
                   <span className="text-xs text-muted-foreground font-base">{room.playerCount} pemain</span>
                 </div>
               </div>
-              <Button size="sm" variant={room.status === "finished" ? "neutral" : "default"}
-                onClick={() => router.push(`/room/${room.id}`)} className="shrink-0">
-                {room.status === "finished" ? "Lihat" : "Gabung"}
-              </Button>
+              <div className="flex gap-2 shrink-0">
+                <Button size="sm" variant={room.status === "finished" ? "neutral" : "default"}
+                  onClick={() => router.push(`/room/${room.id}`)}>
+                  {room.status === "finished" ? "Lihat" : "Gabung"}
+                </Button>
+                {user && room.hostId === user.userId && (
+                  <Button size="sm" variant="destructive"
+                    onClick={() => setDeleteRoomId(room.id)}>
+                    Hapus
+                  </Button>
+                )}
+              </div>
             </CardContent>
           </Card>
         ))}
       </div>
+
+      {/* Delete Confirm Modal */}
+      <ConfirmModal
+        isOpen={!!deleteRoomId}
+        title="Hapus Room"
+        message="Yakin hapus room ini?"
+        onConfirm={() => {
+          if (deleteRoomId) {
+            deleteRoom.mutate(deleteRoomId);
+            setDeleteRoomId(null);
+          }
+        }}
+        onCancel={() => setDeleteRoomId(null)}
+      />
     </main>
   );
 }

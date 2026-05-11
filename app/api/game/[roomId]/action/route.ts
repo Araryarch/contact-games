@@ -24,6 +24,9 @@ export async function POST(
   if (action.type === "start" && !isHost) {
     return Response.json({ error: "Only host can start" }, { status: 403 });
   }
+  if (action.type === "delete" && !isHost) {
+    return Response.json({ error: "Only host can delete" }, { status: 403 });
+  }
   if (action.type !== "send-chat" && !isPlayer) {
     return Response.json({ error: "Spectator hanya bisa chat" }, { status: 403 });
   }
@@ -33,11 +36,23 @@ export async function POST(
       ? { ...action, userId: player.userId, guesserName: player.username }
       : action.type === "send-chat"
         ? { ...action, userId: player.userId, username: player.username }
-        : action;
+        : action.type === "delete"
+          ? { ...action, userId: player.userId }
+          : action;
   const result = applyAction(roomId, normalizedAction);
   if (result.error) return Response.json({ error: result.error }, { status: 400 });
   if (action.type === "start") {
     await db.update(rooms).set({ status: "playing" }).where(eq(rooms.id, roomId));
+  }
+  if (action.type === "delete") {
+    if (!session?.user?.id) {
+      return Response.json({ error: "Only logged in users can delete" }, { status: 403 });
+    }
+    if (session.user.id !== room.hostId) {
+      return Response.json({ error: "Only host can delete" }, { status: 403 });
+    }
+    await db.delete(rooms).where(eq(rooms.id, roomId));
+    return Response.json({ ok: true, deleted: true });
   }
   return Response.json({ ok: true });
 }
